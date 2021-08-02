@@ -7,7 +7,6 @@ from utils import get_free_gpu
 
 save_name = 'omg'
 
-
 def main():
     source_train_loader = mnist.mnist_train_loader
     target_train_loader = mnistm.mnistm_train_loader
