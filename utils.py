@@ -51,23 +51,32 @@ def one_hot_embedding(labels, num_classes=10):
     return y[labels]
 
 
-def save_model(encoder, classifier, discriminator, training_mode, save_name):
+def save_model(epoch, encoder, classifier, discriminator, training_mode, save_dir):
     print('Save models ...')
 
-    save_folder = 'trained_models'
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
+    # save_folder = 'trained_models'
+    # if not os.path.exists(save_folder):
+    #     os.makedirs(save_folder)
 
-    torch.save(encoder.state_dict(), 'trained_models/encoder_' + str(training_mode) + '_' + str(save_name) + '.pt')
-    torch.save(classifier.state_dict(), 'trained_models/classifier_' + str(training_mode) + '_' + str(save_name) + '.pt')
+    save_dir_encoder = save_dir + '/encoder.pt'
+    save_dir_classifier = save_dir + '/classifier.pt'
+    save_dir_discriminator = save_dir + '/discriminator.pt'
+
+    torch.save(encoder.state_dict(), save_dir_encoder)
+    torch.save(classifier.state_dict(), save_dir_classifier)
 
     if training_mode == 'dann':
-        torch.save(discriminator.state_dict(), 'trained_models/discriminator_' + str(training_mode) + '_' + str(save_name) + '.pt')
-
+        torch.save(discriminator.state_dict(), save_dir_discriminator)
+    # torch.save(torch.save_state_dic(
+    #     {'encoder', encoder,
+    #      'casd',asdk
+    #
+    #     }
+    # ))
     print('Model is saved !!!')
 
 
-def plot_embedding(X, y, d, training_mode, save_name):
+def plot_embedding(X, y, d, training_mode, save_name,epoch):
     x_min, x_max = np.min(X, 0), np.max(X, 0)
     X = (X - x_min) / (x_max - x_min)
     y = list(itertools.chain.from_iterable(y))
@@ -76,9 +85,9 @@ def plot_embedding(X, y, d, training_mode, save_name):
     plt.figure(figsize=(10, 10))
     for i in range(len(d)):  # X.shape[0] : 1024
         # plot colored number
-        if d[i] == 0:
+        if d[i] == 0:  # source
             colors = (0.0, 0.0, 1.0, 1.0)
-        else:
+        else:  # target
             colors = (1.0, 0.0, 0.0, 1.0)
         plt.text(X[i, 0], X[i, 1], str(y[i]),
                  color=colors,
@@ -88,16 +97,16 @@ def plot_embedding(X, y, d, training_mode, save_name):
     if save_name is not None:
         plt.title(save_name)
 
-    save_folder = 'saved_plot'
+    save_folder = 'saved_plot/'+save_name
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
-    fig_name = 'saved_plot/' + str(training_mode) + '_' + str(save_name) + '.png'
+    fig_name = save_folder+'/' + str(save_name)+'_epoch_' + str(epoch+1)+'.png'
     plt.savefig(fig_name)
     print('{} is saved'.format(fig_name))
 
 
-def visualize(encoder, training_mode, save_name):
+def visualize(epoch, encoder, training_mode, save_name):
     # Draw 512 samples in test_data
     source_test_loader = mnist.mnist_test_loader
     target_test_loader = mnistm.mnistm_test_loader
@@ -116,6 +125,33 @@ def visualize(encoder, training_mode, save_name):
         source_img_list.append(img)
 
     source_img_list = torch.stack(source_img_list)
+    '''
+    torch.cat()은 주어진 차원을 기준으로 주어진 텐서들을 붙입(concatenate)니다.
+    torch.stack()은 새로운 차원으로 주어진 텐서들을 붙입니다.
+    
+    ex)
+    t1 = torch.tensor([[1, 2],
+                       [3, 4]])
+    t2 = torch.tensor([[5, 6],
+                       [7, 8]])
+                   
+    torch.cat((t1, t2), dim=0) # dim=0인 경우
+    tensor([[1, 2],
+            [3, 4],
+            [5, 6],
+            [7, 8]])
+        
+    torch.cat((t1, t2), dim=1) # dim=1인 경우
+    tensor([[1, 2, 5, 6],
+            [3, 4, 7, 8]])
+        
+    torch.stack((t1, t2))
+    tensor([[[1, 2],
+             [3, 4]],
+             
+            [[5, 6],
+            [7, 8]]])
+    '''
     source_img_list = source_img_list.view(-1, 3, 28, 28)
 
     # Get target_test samples
@@ -144,13 +180,15 @@ def visualize(encoder, training_mode, save_name):
 
     print("Extract features to draw T-SNE plot...")
     combined_feature = encoder(combined_img_list)  # combined_feature : 1024,2352
+    combined_feature=combined_feature.view(combined_feature.size(0),-1)
+
 
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=3000)
     dann_tsne = tsne.fit_transform(combined_feature.detach().cpu().numpy())
 
     print('Draw plot ...')
-    save_name = save_name + '_' + str(training_mode)
-    plot_embedding(dann_tsne, combined_label_list, combined_domain_list, training_mode, save_name)
+    # save_name = save_dir + '_' + str(training_mode)
+    plot_embedding(dann_tsne, combined_label_list, combined_domain_list, training_mode, save_name,epoch)
 
 
 def visualize_input():
@@ -210,9 +248,12 @@ def visualize_input():
 
 
 def get_free_gpu():
+    # -q : display GPU or Unit info
+    # -q -d Memory: Display only selected information(Memory, ECC)
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
     memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
     return np.argmax(memory_available)
+
 
 def set_model_mode(mode='train', models=None):
     for model in models:

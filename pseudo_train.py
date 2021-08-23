@@ -9,17 +9,13 @@ import mnistm
 from utils import save_model
 from utils import visualize
 from utils import set_model_mode
+import torch.nn.functional as F
 import params
 import os
-import usps
 
 # Source : 0, Target :1
-
 source_test_loader = mnist.mnist_test_loader
 target_test_loader = mnistm.mnistm_test_loader
-
-usps_source_test_loader = usps.usps_test_loader
-usps_target_test_loader = usps.usps_test_loader
 
 result_list = []
 
@@ -70,36 +66,23 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
     visualize(encoder, 'source')
 
 
-def dann(source, target, encoder, classifier, discriminator, source_train_loader, target_train_loader, sum_pooling_mode,
-         sumdiscriminator, save_dir, save_name):
+def dann(encoder, classifier, discriminator, source_train_loader, target_train_loader, sum_pooling_mode, sumdiscriminator, save_dir, save_name):
     print("DANN training")
 
     classifier_criterion = nn.CrossEntropyLoss().cuda()
     discriminator_criterion = nn.CrossEntropyLoss().cuda()
 
-    if sum_pooling_mode is not 0:
-        optimizer = optim.SGD(
-            list(encoder.parameters()) +
-            list(classifier.parameters()) +
-            list(discriminator.parameters()) +
-            list(sumdiscriminator.parameters()),
-            lr=0.01,
-            momentum=0.9)
-    else:
-        optimizer = optim.SGD(
-            list(encoder.parameters()) +
-            list(classifier.parameters()) +
-            list(discriminator.parameters()),
-            lr=0.01,
-            momentum=0.9)
+    # logit_criterion = F.CrossEntropyLoss().cuda()
+    optimizer = optim.SGD(
+        list(encoder.parameters()) +
+        list(classifier.parameters()) +
+        list(discriminator.parameters()),
+        lr=0.01,
+        momentum=0.9)
 
-    best_acc = 0
     for epoch in range(params.epochs):
         print('Epoch : {}'.format(epoch))
-        if sum_pooling_mode is not 0:
-            set_model_mode('train', [encoder, classifier, discriminator, sumdiscriminator])
-        else:
-            set_model_mode('train', [encoder, classifier, discriminator])
+        set_model_mode('train', [encoder, classifier, discriminator, sumdiscriminator])
 
         start_steps = epoch * len(source_train_loader)
         total_steps = params.epochs * len(target_train_loader)
@@ -133,13 +116,44 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             # print(feat.shape) # torch.Size([64, 48, 7, 7])
 
             source_feature = encoder(source_image)
+            target_feature = encoder(target_image)
 
             # 1.Classification loss
             class_pred = classifier(source_feature)  # torch.Size([32, 10])
 
+            logit_s = classifier(source_feature, pseudo=True)
+            logit_t = classifier(target_feature, pseudo=True)
+            logit_t.cuda()
+            logit_s.cuda()
+            # print(class_pred)
+
+
+            total_logit= (logit_s + logit_t)/2
+            total_logit.cuda()
+            # print(logit_s)
+            # print(source_label)
+            # print(logit_t)
+            # exit()
+
+            # prit
+            a= []
+            pseudo_loss= F.cross_entropy(total_logit, source_label)
+
+            a.append(pseudo_loss)
+            logit_t = logit_t.type(torch.cuda.LongTensor)
+            pseudo_loss2= F.cross_entropy(logit_t, total_logit.detach())
+            a.append(pseudo_loss2)
+            # pseudo_loss = logit_criterion(total_logit, source_label)
+            # logit_t = logit_t.type(torch.cuda.LongTensor)
+            # pseudo_loss2 = logit_criterion(logit_t, total_logit.detach())
+
+            total_pseudo_loss = sum(a) /2
+
+
             class_loss = classifier_criterion(class_pred, source_label)
 
             # 2. Domain loss
+
             domain_pred = discriminator(combined_feature, alpha)
             # print(combined_feature.shape)
 
@@ -168,20 +182,20 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             domain_loss = discriminator_criterion(domain_pred, domain_combined_label)
 
             if sum_pooling_mode == 1 or sum_pooling_mode == 2:
-                # print("sum mode",sum_pooling_mode)
+                print("sum mode",sum_pooling_mode)
                 sum_loss = discriminator_criterion(sum_pooling_pred, domain_combined_label)
             elif sum_pooling_mode == 3:
-                # print("both sum mode", sum_pooling_mode)
+                print("both sum mode", sum_pooling_mode)
                 sum_loss = discriminator_criterion(sum_pooling_pred, domain_combined_label)
                 sum_loss2 = discriminator_criterion(sum_pooling_pred2, domain_combined_label)
 
-            total_loss = class_loss + domain_loss
+            total_loss = class_loss + domain_loss + total_pseudo_loss
 
-            if sum_pooling_mode == 1 or sum_pooling_mode == 2:  # 1 = height 2 = width 3 = both
-                # print("sum mode2", sum_pooling_mode)
+            if sum_pooling_mode == 1 or sum_pooling_mode == 2:
+                print("sum mode2", sum_pooling_mode)
                 total_loss += sum_loss
             elif sum_pooling_mode == 3:
-                # print("both sum mode", sum_pooling_mode)
+                print("both sum mode", sum_pooling_mode)
                 total_loss += sum_loss
                 total_loss += sum_loss2
 
@@ -197,41 +211,29 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
                             domain_loss.item(), sum_loss.item()))
                 elif sum_pooling_mode == 3:
                     print(
-                        '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}'.format(
+                        '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss width: {:.6f}\tSum Loss height: {:.6f}'.format(
                             batch_idx * len(target_image), len(target_train_loader.dataset),
                             100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
-                            domain_loss, sum_loss.item()))
+                            domain_loss.item(), sum_loss.item(), sum_loss2.item()))
 
                 else:
-                    print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}'.format(
+                    # print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}'.format(
+                    #     batch_idx * len(target_image), len(target_train_loader.dataset),
+                    #     100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                    #     domain_loss.item()))
+                    print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tPseudo Loss: {:.6f}'.format(
                         batch_idx * len(target_image), len(target_train_loader.dataset),
                         100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
-                        domain_loss.item()))
-
+                        domain_loss.item()),total_pseudo_loss.item())
         # if epoch == 0:
         #     visualize(epoch, encoder, 'source', save_name)
 
         if (epoch + 1) % 10 == 0:
             # if epoch < 1:
             global result_list
-
-            if source == "mnist":
-                if target == "mnistm":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, source_test_loader,
-                                                           target_test_loader, epoch,
-                                                           training_mode='dann')
-                elif target == "usps":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, source_test_loader,
-                                                           usps_target_test_loader, epoch,
-                                                           training_mode='dann')
-            elif source == "usps":
-                if target == "mnist":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, usps_source_test_loader,
-                                                           target_test_loader, epoch,
-                                                           training_mode='dann')
-            if current_acc > best_acc:
-                best_acc = current_acc
-                save_model(epoch, encoder, classifier, discriminator, 'dann', save_dir)
+            result_list = test.tester(encoder, classifier, discriminator, source_test_loader, target_test_loader, epoch,
+                                      training_mode='dann')
+            save_model(epoch, encoder, classifier, discriminator, 'dann', save_dir)
             # visualize(epoch, encoder, 'source', save_name)
 
     print(max(result_list, key=lambda x: x['target_acc']))

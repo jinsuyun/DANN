@@ -4,14 +4,11 @@ from torchvision import transforms
 import torch
 import params
 
-# transform = transforms.Compose([transforms.ToTensor(),
-#                                 transforms.Normalize(mean=(0.29730626, 0.29918741, 0.27534935),
-#                                                      std=(0.32780124, 0.32292358, 0.32056796)),
-#                                 ])
 
 transform = transforms.Compose([transforms.ToTensor(),
                                 transforms.Normalize(mean=(0.2468769476570631, 0.2468769476570631, 0.2598811329464521),
                                                      std=(0.2468769476570631, 0.2468769476570631, 0.2598811329464521)),
+                                transforms.Resize((28,28))
                                 ])
 
 usps_train_dataset = datasets.USPS(root='data/pytorch/USPS', train=True, download=True,
@@ -22,28 +19,28 @@ usps_test_dataset = datasets.USPS(root='data/pytorch/USPS', train=False, downloa
                                      transform=transform)
 
 
-print('==> Computing mean and std..')
-mean_train = usps_train_dataset.data.mean(axis=(0,1,2))
-mean_val = usps_valid_dataset.data.mean(axis=(0,1,2))
-mean_test = usps_test_dataset.data.mean(axis=(0,1,2))
-
-std_train = usps_train_dataset.data.std(axis=(0,1,2))
-std_val = usps_valid_dataset.data.std(axis=(0,1,2))
-std_test = usps_test_dataset.data.std(axis=(0,1,2))
-
-mean_train = mean_train / 255
-mean_val = mean_val / 255
-mean_test = mean_test / 255
-
-std_train = std_train / 255
-std_val = std_val / 255
-std_test = std_test / 255
-print("Mean")
-print(mean_train, mean_val,mean_test)
-
-print("Std")
-print(mean_train, mean_val,mean_test)
-print("\n")
+# print('==> Computing mean and std..')
+# mean_train = usps_train_dataset.data.mean(axis=(0,1,2))
+# mean_val = usps_valid_dataset.data.mean(axis=(0,1,2))
+# mean_test = usps_test_dataset.data.mean(axis=(0,1,2))
+#
+# std_train = usps_train_dataset.data.std(axis=(0,1,2))
+# std_val = usps_valid_dataset.data.std(axis=(0,1,2))
+# std_test = usps_test_dataset.data.std(axis=(0,1,2))
+#
+# mean_train = mean_train / 255
+# mean_val = mean_val / 255
+# mean_test = mean_test / 255
+#
+# std_train = std_train / 255
+# std_val = std_val / 255
+# std_test = std_test / 255
+# print("Mean")
+# print(mean_train, mean_val,mean_test)
+#
+# print("Std")
+# print(mean_train, mean_val,mean_test)
+# print("\n")
 
 indices = list(range(len(usps_train_dataset)))
 validation_size = 5000

@@ -1,0 +1,15 @@
+#model
+**/*.pt
+*.pt
+*.txt
+**/*.txt
+data/
+best_result/
+result/
+
+*.png
+**/*.png
+*.jpg
+**/*.jpg
+
+
