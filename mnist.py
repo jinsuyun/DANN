@@ -4,22 +4,50 @@ from torchvision import transforms
 import torch
 import params
 
-transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize((0.29730626, 0.29918741, 0.27534935),
-                                                     (0.32780124, 0.32292358, 0.32056796)),
+train_transform = transforms.Compose([transforms.ToTensor(),
+                                transforms.Normalize(mean=(0.1307,),
+                                                     std=(0.1307)),
+                                ])
+test_transform = transforms.Compose([transforms.ToTensor(),
+                                transforms.Normalize(mean=(0.1325),
+                                                     std=(0.1325)),
                                 ])
 
+
 mnist_train_dataset = datasets.MNIST(root='data/pytorch/MNIST', train=True, download=True,
-                                     transform=transform)
+                                     transform=train_transform)
 mnist_valid_dataset = datasets.MNIST(root='data/pytorch/MNIST', train=True, download=True,
-                                     transform=transforms)
-mnist_test_dataset = datasets.MNIST(root='data/pytorch/MNIST', train=False, transform=transform)
+                                     transform=train_transform)
+mnist_test_dataset = datasets.MNIST(root='data/pytorch/MNIST', train=False, transform=test_transform)
 
 indices = list(range(len(mnist_train_dataset)))
 validation_size = 5000
 train_idx, valid_idx = indices[validation_size:], indices[:validation_size]
 train_sampler = SubsetRandomSampler(train_idx)
 valid_sampler = SubsetRandomSampler(valid_idx)
+
+# print('==> Computing mean and std..')
+# mean_train = mnist_train_dataset.train_data.float().mean(axis=(0,1,2))
+# mean_val = mnist_valid_dataset.train_data.float().mean(axis=(0,1,2))
+# mean_test = mnist_test_dataset.train_data.float().mean(axis=(0,1,2))
+#
+# std_train = mnist_train_dataset.train_data.float().std(axis=(0,1,2))
+# std_val = mnist_valid_dataset.train_data.float().std(axis=(0,1,2))
+# std_test = mnist_test_dataset.train_data.float().std(axis=(0,1,2))
+#
+# mean_train = mean_train / 255
+# mean_val = mean_val / 255
+# mean_test = mean_test / 255
+#
+# std_train = std_train / 255
+# std_val = std_val / 255
+# std_test = std_test / 255
+# print("Mean")
+# print(mean_train, mean_val,mean_test)
+#
+# print("Std")
+# print(mean_train, mean_val,mean_test)
+# print("\n")
 
 mnist_train_loader = DataLoader(
     mnist_train_dataset,
@@ -60,34 +88,33 @@ def one_hot_embedding(labels, num_classes=10):
     y = torch.eye(num_classes)
     return y[labels]
 
-
 # print(one_hot_embedding(mnist_test_dataset.test_labels))
 
 # print(mnist_concat.shape)
 
 
 # def test():
-    # print(mnist_train_loader.shape)
-    # print(len(train_sampler), len(mnist_test_loader), len(valid_sampler))
-    # print(len(mnist_train_loader), len(mnist_valid_loader), len(mnist_test_loader))
-    # for i, train_data in enumerate(mnist_train_loader):
-    #     img, label = train_data
-    #     print(img.shape)
-    # for i in range(1):
-    #     # for batch_idx, (inputs, labels) in enumerate(train_loader):
-    #     #     print(i, batch_idx, labels, len(labels))
-    # mnist_train_all = (mnist_train_dataset.train_data[5000:].reshape(55000, 28, 28, 1))
-    # mnist_concat = torch.cat((mnist_train_all, mnist_train_all, mnist_train_all), 3)
-    # print(mnist_concat.shape)
-    # print(list(mnist_train_dataset.train_data[5000:].size()))
-    # print(mnist_train_dataset.train_data.float().mean()/255)
-    # print(mnist_train_dataset.train_data.float().std()/255)
-    # for batch_idx, (train_data, test_data) in enumerate(zip(mnist_train_loader, mnist_valid_loader)):
-    #     train_image, train_label = train_data
-    #     test_image, test_label = test_data
-    #     print(train_image.shape)
-    #     # print(train_label, len(train_label))
-    #     # print(test_label, len(test_label))
-    #     # exit()
+# print(mnist_train_loader.shape)
+# print(len(train_sampler), len(mnist_test_loader), len(valid_sampler))
+# print(len(mnist_train_loader), len(mnist_valid_loader), len(mnist_test_loader))
+# for i, train_data in enumerate(mnist_train_loader):
+#     img, label = train_data
+#     print(img.shape)
+# for i in range(1):
+#     # for batch_idx, (inputs, labels) in enumerate(train_loader):
+#     #     print(i, batch_idx, labels, len(labels))
+# mnist_train_all = (mnist_train_dataset.train_data[5000:].reshape(55000, 28, 28, 1))
+# mnist_concat = torch.cat((mnist_train_all, mnist_train_all, mnist_train_all), 3)
+# print(mnist_concat.shape)
+# print(list(mnist_train_dataset.train_data[5000:].size()))
+# print(mnist_train_dataset.train_data.float().mean()/255)
+# print(mnist_train_dataset.train_data.float().std()/255)
+# for batch_idx, (train_data, test_data) in enumerate(zip(mnist_train_loader, mnist_valid_loader)):
+#     train_image, train_label = train_data
+#     test_image, test_label = test_data
+#     print(train_image.shape)
+#     # print(train_label, len(train_label))
+#     # print(test_label, len(test_label))
+#     # exit()
 
 # test()
