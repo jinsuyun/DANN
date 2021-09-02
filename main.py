@@ -1,10 +1,13 @@
 import os
 
 import torch
+
+import params
 import train
 import mnist
 import mnistm
-
+import usps
+import svhn
 import model
 import pseudo_train
 import only_sumpooling_train
@@ -54,8 +57,12 @@ def parse_args():
         "--target",
         dest="target",
         help="choose mnist usps",
-        default="mnist",
+        default="mnistm",
         type=str
+    )
+
+    parser.add_argument(
+        "--bs", dest="batch_size", help="batch_size", default=32, type=int
     )
 
     args = parser.parse_args()
@@ -65,28 +72,37 @@ def parse_args():
 def main():
 
     args = parse_args()
-
+    # params.batch_size = args.batch_size
     source_train_loader = mnist.mnist_train_loader
     target_train_loader = mnistm.mnistm_train_loader
 
-    if args.source == "mnist":
-        print("1")
-        source_train_loader = mnist.mnist_train_loader
-
-    elif args.source == "usps":
-        print("2")
-        source_train_loader = usps.usps_train_loader
-
-    if args.target == "mnistm":
-        print("3")
-        target_train_loader = mnistm.mnistm_train_loader
-
-    elif args.target =="usps":
-        print("4")
-        target_train_loader = usps.usps_train_loader
-
     print("Called with args:")
     print(args)
+
+    if args.source == "mnist":
+        print("Source: {}".format(args.source))
+        source_train_loader = mnist.mnist_train_loader
+    elif args.source == "usps":
+        print("Source: {}".format(args.source))
+        source_train_loader = usps.usps_train_loader
+    elif args.source =="svhn":
+        print("Source: {}".format(args.source))
+        source_train_loader = svhn.svhn_train_loader
+
+    if args.target == "mnistm":
+        print("Target: {}".format(args.target))
+        target_train_loader = mnistm.mnistm_train_loader
+    elif args.target =="usps":
+        print("Target: {}".format(args.target))
+        target_train_loader = usps.usps_train_loader
+    elif args.target == "mnist":
+        print("Target: {}".format(args.target))
+        target_train_loader = mnist.mnist_train_loader
+    elif args.target == "svhn":
+        print("Target: {}".format(args.target))
+        target_train_loader = svhn.svhn_train_loader
+
+
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
     model_dir = save_dir + args.save
 
@@ -96,12 +112,12 @@ def main():
     if torch.cuda.is_available():
         get_free_gpu()
         print('Running GPU : {}'.format(torch.cuda.current_device()))
-        encoder = model.Extractor().cuda()
-        classifier = model.Classifier().cuda()
-        discriminator = model.Discriminator().cuda()
+        encoder = model.Extractor(source=args.source,target=args.target).cuda()
+        classifier = model.Classifier(source=args.source,target=args.target).cuda()
+        discriminator = model.Discriminator(source=args.source,target=args.target).cuda()
         # Discriminator_Conv2d = model.Discriminator_Conv2d().cuda()
         # featuremap = model.ExtractorFeatureMap().cuda()
-        sumdiscriminator = model.SumDiscriminator().cuda()
+        sumdiscriminator = model.SumDiscriminator(source=args.source,target=args.target).cuda()
 
         # train.source_only(encoder, classifier, source_train_loader, target_train_loader)
         # train.dann(featuremap, encoder, classifier, discriminator, source_train_loader, target_train_loader,
@@ -110,16 +126,16 @@ def main():
         sum_pooling_mode =0
         if args.sum_pooling == 'height':
             sum_pooling_mode = 1
-            print(sum_pooling_mode)
+            print("Height sum pooling ",sum_pooling_mode)
         elif args.sum_pooling == 'width':
             sum_pooling_mode= 2
-            print(sum_pooling_mode)
+            print("Width sum pooling ",sum_pooling_mode)
         elif args.sum_pooling == 'both':
             sum_pooling_mode=3
-            print(sum_pooling_mode)
+            print("Both sum pooling ",sum_pooling_mode)
         else:
             sum_pooling_mode=0
-            print(sum_pooling_mode)
+            print("Default no sum pooling",sum_pooling_mode)
 
         train.dann(args.source, args.target, encoder, classifier, discriminator, source_train_loader, target_train_loader,
                    sum_pooling_mode, sumdiscriminator, model_dir, args.save)

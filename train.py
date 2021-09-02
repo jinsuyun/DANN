@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+
+import svhn
 import utils
 import torch.optim as optim
 import torch.nn as nn
@@ -12,19 +14,21 @@ from utils import set_model_mode
 import params
 import os
 import usps
+import argparse
 
 # Source : 0, Target :1
 
-source_test_loader = mnist.mnist_test_loader
-target_test_loader = mnistm.mnistm_test_loader
+mnist_test_loader = mnist.mnist_test_loader
+mnistm_test_loader = mnistm.mnistm_test_loader
 
-usps_source_test_loader = usps.usps_test_loader
-usps_target_test_loader = usps.usps_test_loader
+usps_test_loader = usps.usps_test_loader
+
+svhn_test_loader = svhn.svhn_test_loader
 
 result_list = []
 
 
-def source_only(encoder, classifier, source_train_loader, target_train_loader):
+def source_only(source, target, encoder, classifier, source_train_loader, target_train_loader, save_dir, save_name):
     print("Source-only training")
     classifier_criterion = nn.CrossEntropyLoss().cuda()
     optimizer = optim.SGD(
@@ -32,6 +36,7 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
         list(classifier.parameters()),
         lr=0.01, momentum=0.9)
 
+    best_acc = 0
     for epoch in range(params.epochs):
         print('Epoch : {}'.format(epoch))
         set_model_mode('train', [encoder, classifier])
@@ -63,19 +68,58 @@ def source_only(encoder, classifier, source_train_loader, target_train_loader):
                                                                      100. * batch_idx / len(source_train_loader),
                                                                      class_loss.item()))
 
-        if (epoch + 1) % 10 == 0:
-            list = test.tester(encoder, classifier, None, source_test_loader, target_test_loader, epoch,
-                               training_mode='source_only')
-    save_model(encoder, classifier, None, 'source')
-    visualize(encoder, 'source')
+            if (epoch + 1) % 10 == 0:
+                # if epoch < 1:
+                global result_list
+
+                if source == "mnist":
+                    if target == "mnistm":
+                        result_list, current_acc = test.tester(source, target, encoder, classifier,
+                                                               mnist_test_loader,
+                                                               mnistm_test_loader, epoch,
+                                                               training_mode='dann')
+                    elif target == "usps":
+                        result_list, current_acc = test.tester(source, target, encoder, classifier,
+                                                               mnist_test_loader,
+                                                               usps_test_loader, epoch,
+                                                               training_mode='dann')
+                elif source == "usps":
+                    if target == "mnist":
+                        result_list, current_acc = test.tester(source, target, encoder, classifier,
+                                                               usps_test_loader,
+                                                               mnist_test_loader, epoch,
+                                                               training_mode='dann')
+                if current_acc > best_acc:
+                    best_acc = current_acc
+                    save_model(epoch, encoder, classifier, 'dann', save_dir)
+                # visualize(epoch, encoder, 'source', save_name)
+
+    print(max(result_list, key=lambda x: x['target_acc']))
+    best_dir = 'best_result/'
+
+    if not os.path.exists(best_dir):
+        os.mkdir(best_dir)
+    target_acc = max(result_list, key=lambda x: x['target_acc'])
+    target_acc = str(target_acc.get('target_acc'))
+    result = best_dir + save_name + "_" + target_acc + ".txt"
+    with open(result, 'a') as best_result:
+        best_result.write(str(max(result_list, key=lambda x: x['target_acc'])))
+
+    print("Best result is saved!!")
 
 
 def dann(source, target, encoder, classifier, discriminator, source_train_loader, target_train_loader, sum_pooling_mode,
          sumdiscriminator, save_dir, save_name):
     print("DANN training")
-
+    print(source, " ", len(source_train_loader.dataset))
+    print(target, " ", len(target_train_loader.dataset))
+    # print(len(source_train_loader.dataset))
+    # print(len(target_train_loader.dataset))
+    # exit()
+    visualize(source, target, -1, encoder, 'source', save_name)
     classifier_criterion = nn.CrossEntropyLoss().cuda()
     discriminator_criterion = nn.CrossEntropyLoss().cuda()
+    consistency_criterion = nn.MSELoss(size_average=False).cuda()
 
     if sum_pooling_mode is not 0:
         optimizer = optim.SGD(
@@ -93,8 +137,11 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             lr=0.01,
             momentum=0.9)
 
+
+
     best_acc = 0
     for epoch in range(params.epochs):
+
         print('Epoch : {}'.format(epoch))
         if sum_pooling_mode is not 0:
             set_model_mode('train', [encoder, classifier, discriminator, sumdiscriminator])
@@ -114,34 +161,45 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             p = float(batch_idx + start_steps) / total_steps
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
 
-            source_image = torch.cat((source_image, source_image, source_image), 1)
+            if source == "mnist":
+                source_image = torch.cat((source_image, source_image, source_image), 1)
+
+            if target == "mnist":
+                target_image = torch.cat((target_image, target_image, target_image), 1)
 
             # print(source_image.shape)  # torch.Size([32, 1, 28, 28])
-
+            # print(target_image.shape)  # torch.Size([32, 1, 28, 28])
             source_image, source_label = source_image.cuda(), source_label.cuda()
             target_image, target_label = target_image.cuda(), target_label.cuda()
             combined_image = torch.cat((source_image, target_image), 0)
 
             # print(source_image.shape)  # torch.Size([32, 3, 28, 28])
-            # print(combined_image.shape)  # torch.Size([64, 3, 28, 28])
+            # print(combined_image.shape)  # torch.Size([64, 3, 28, 28]) || usps torch.Size([64, 1, 28, 28])
 
             optimizer = utils.optimizer_scheduler(optimizer=optimizer, p=p)
             optimizer.zero_grad()
 
-            # combined_feature, feat = encoder(combined_image)  # combined_feature --> 64 * 2352(3*28*28)
+            # print(combined_image.shape) # s->m torch.Size([64, 3, 28, 28])
+
             combined_feature = encoder(combined_image)  # combined_feature --> 64 * 2352(3*28*28)
-            # print(feat.shape) # torch.Size([64, 48, 7, 7])
+            # print(combined_feature.shape) # s->m torch.Size([64, 128, 3, 3])
 
             source_feature = encoder(source_image)
+            # print(source_feature.shape) # s->m : torch.Size([32, 128, 3, 3])    m->mm : torch.Size([32, 48, 7, 7])
 
             # 1.Classification loss
             class_pred = classifier(source_feature)  # torch.Size([32, 10])
+            # print(class_pred.shape)
 
             class_loss = classifier_criterion(class_pred, source_label)
 
             # 2. Domain loss
             domain_pred = discriminator(combined_feature, alpha)
             # print(combined_feature.shape)
+            # print(class_pred.shape)
+            # print(domain_pred.shape)
+
+            # print(source_feature.shape)
 
             if sum_pooling_mode == 1:  # height sum pooling
                 # print(feat.shape) #torch.Size([64, 48, 7, 7])
@@ -213,26 +271,35 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
 
         if (epoch + 1) % 10 == 0:
             # if epoch < 1:
-            global result_list
+            # global result_list
 
             if source == "mnist":
                 if target == "mnistm":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, source_test_loader,
-                                                           target_test_loader, epoch,
+                    result_list, current_acc = test.tester(source, target, encoder, classifier, discriminator,
+                                                           mnist_test_loader,
+                                                           mnistm_test_loader, epoch,
                                                            training_mode='dann')
                 elif target == "usps":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, source_test_loader,
-                                                           usps_target_test_loader, epoch,
+                    result_list, current_acc = test.tester(source, target, encoder, classifier, discriminator,
+                                                           mnist_test_loader,
+                                                           usps_test_loader, epoch,
                                                            training_mode='dann')
             elif source == "usps":
                 if target == "mnist":
-                    result_list, current_acc = test.tester(encoder, classifier, discriminator, usps_source_test_loader,
-                                                           target_test_loader, epoch,
+                    result_list, current_acc = test.tester(source, target, encoder, classifier, discriminator,
+                                                           usps_test_loader,
+                                                           mnist_test_loader, epoch,
+                                                           training_mode='dann')
+            elif source == "svhn":
+                if target == "mnist":
+                    result_list, current_acc = test.tester(source, target, encoder, classifier, discriminator,
+                                                           svhn_test_loader,
+                                                           mnist_test_loader, epoch,
                                                            training_mode='dann')
             if current_acc > best_acc:
                 best_acc = current_acc
                 save_model(epoch, encoder, classifier, discriminator, 'dann', save_dir)
-            # visualize(epoch, encoder, 'source', save_name)
+            visualize(source, target, epoch, encoder, 'source', save_name)
 
     print(max(result_list, key=lambda x: x['target_acc']))
     best_dir = 'best_result/'

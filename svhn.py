@@ -25,7 +25,7 @@ svhn_test_dataset = datasets.SVHN(root='data/pytorch/SVHN', split="test", downlo
                                      transform=test_transform)
 
 
-# print('==> Computing mean and std..')
+# print('==> SVHN Computing mean and std..')
 # mean_train = svhn_train_dataset.data.mean()
 # mean_val = svhn_valid_dataset.data.mean()
 # mean_test = svhn_test_dataset.data.mean()

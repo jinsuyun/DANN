@@ -5,18 +5,22 @@ import torch
 import params
 
 
-transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.2468769476570631, 0.2468769476570631, 0.2598811329464521),
-                                                     std=(0.2468769476570631, 0.2468769476570631, 0.2598811329464521)),
-                                transforms.Resize((28,28))
+train_transform = transforms.Compose([transforms.ToTensor(),
+                                transforms.Normalize(mean=(0.2468769476570631,),
+                                                     std=(0.29887581181519896,))
+                                ])
+test_transform = transforms.Compose([transforms.ToTensor(),
+                                transforms.Normalize(mean=(0.2598811329464521,),
+                                                     std=(0.30825718086426723,))
                                 ])
 
+
 usps_train_dataset = datasets.USPS(root='data/pytorch/USPS', train=True, download=True,
-                                     transform=transform)
+                                     transform=train_transform)
 usps_valid_dataset = datasets.USPS(root='data/pytorch/USPS', train=True, download=True,
                                      transform=transforms)
 usps_test_dataset = datasets.USPS(root='data/pytorch/USPS', train=False, download=True,
-                                     transform=transform)
+                                     transform=test_transform)
 
 
 # print('==> Computing mean and std..')
@@ -39,7 +43,7 @@ usps_test_dataset = datasets.USPS(root='data/pytorch/USPS', train=False, downloa
 # print(mean_train, mean_val,mean_test)
 #
 # print("Std")
-# print(mean_train, mean_val,mean_test)
+# print(std_train, std_val,std_test)
 # print("\n")
 
 indices = list(range(len(usps_train_dataset)))

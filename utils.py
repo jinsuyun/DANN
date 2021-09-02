@@ -7,7 +7,7 @@ import mnist
 import mnistm
 import itertools
 import os
-
+import svhn
 
 class ReverseLayerF(Function):
 
@@ -86,9 +86,9 @@ def plot_embedding(X, y, d, training_mode, save_name,epoch):
     for i in range(len(d)):  # X.shape[0] : 1024
         # plot colored number
         if d[i] == 0:  # source
-            colors = (0.0, 0.0, 1.0, 1.0)
+            colors = (0.0, 0.0, 1.0, 1.0) # blue
         else:  # target
-            colors = (1.0, 0.0, 0.0, 1.0)
+            colors = (1.0, 0.0, 0.0, 1.0) # red
         plt.text(X[i, 0], X[i, 1], str(y[i]),
                  color=colors,
                  fontdict={'weight': 'bold', 'size': 9})
@@ -106,21 +106,28 @@ def plot_embedding(X, y, d, training_mode, save_name,epoch):
     print('{} is saved'.format(fig_name))
 
 
-def visualize(epoch, encoder, training_mode, save_name):
+def visualize(source,target,epoch, encoder, training_mode, save_name):
     # Draw 512 samples in test_data
-    source_test_loader = mnist.mnist_test_loader
-    target_test_loader = mnistm.mnistm_test_loader
+    if source=="mnist" and target=="mnistm":
+        source_test_loader = mnist.mnist_test_loader
+        target_test_loader = mnistm.mnistm_test_loader
+    elif source=="svhn" and target=="mnist":
+        source_test_loader = svhn.svhn_test_loader
+        target_test_loader = mnist.mnist_test_loader
 
     # Get source_test samples
     source_label_list = []
     source_img_list = []
+
+
     for i, test_data in enumerate(source_test_loader):
         if i >= 16:  # to get only 512 samples
             break
         img, label = test_data
         label = label.numpy()
         img = img.cuda()
-        img = torch.cat((img, img, img), 1)  # MNIST channel 1 -> 3
+        if source=="mnist":
+            img = torch.cat((img, img, img), 1)  # MNIST channel 1 -> 3
         source_label_list.append(label)
         source_img_list.append(img)
 
@@ -163,11 +170,14 @@ def visualize(epoch, encoder, training_mode, save_name):
         img, label = test_data
         label = label.numpy()
         img = img.cuda()
+        if target == "mnist":
+            img = torch.cat((img, img, img), 1)
         target_label_list.append(label)
         target_img_list.append(img)
 
     target_img_list = torch.stack(target_img_list)
-    target_img_list = target_img_list.view(-1, 3, 28, 28)
+    if target == "mnistm" or "mnist":
+        target_img_list = target_img_list.view(-1, 3, 28, 28)
 
     # Stack source_list + target_list
     combined_label_list = source_label_list

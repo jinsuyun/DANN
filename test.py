@@ -6,7 +6,7 @@ result_list = []
 best_acc = dict()
 
 
-def tester(encoder, classifier, discriminator, source_test_loader, target_test_loader, epoch, training_mode):
+def tester(source,target,encoder, classifier, discriminator, source_test_loader, target_test_loader, epoch, training_mode):
     print("Model test ...")
 
     encoder.cuda()
@@ -27,8 +27,16 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
 
         # 1. Source input -> Source Classification
         source_image, source_label = source_data
+
+        # print(source_image.shape) # m->mm : torch.Size([32, 1, 28, 28])
+        # print(source_label.shape)  # m->mm : torch.Size([32])
+
+
+
         source_image, source_label = source_image.cuda(), source_label.cuda()
-        source_image = torch.cat((source_image, source_image, source_image), 1)  # MNIST convert to 3 channel
+        # source_image = source_image.cuda()
+        if source == "mnist":
+            source_image = torch.cat((source_image, source_image, source_image), 1)  # MNIST convert to 3 channel
         source_feature = encoder(source_image)
         source_output = classifier(source_feature)
         source_pred = source_output.data.max(1, keepdim=True)[1]
@@ -37,6 +45,8 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
         # 2. Target input -> Target Classification
         target_image, target_label = target_data
         target_image, target_label = target_image.cuda(), target_label.cuda()
+        if target == "mnist":
+            target_image =torch.cat((target_image,target_image,target_image),1)
         target_feature = encoder(target_image)
         target_output = classifier(target_feature)
         target_pred = target_output.data.max(1, keepdim=True)[1]
@@ -68,7 +78,9 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
         target_acc = 100. * target_correct.item() / len(target_test_loader.dataset)
         domain_acc = 100. * domain_correct.item() / (len(source_test_loader.dataset) + len(target_test_loader.dataset))
 
-        best_acc = {'epoch': epoch + 1, 'source_acc': source_acc, 'target_acc': target_acc, 'domain_acc': domain_acc}
+        best_acc = {'epoch': epoch + 1, 'source_acc': round(source_acc, 2), 'target_acc': round(target_acc, 2),
+                    'domain_acc': round(domain_acc, 2)}
+
         result_list.append(best_acc)
 
         print('\nSource Accuracy: {}/{} ({:.2f}%)\n'
@@ -95,7 +107,7 @@ def tester(encoder, classifier, discriminator, source_test_loader, target_test_l
             target_correct, len(target_test_loader.dataset),
             100. * target_correct.item() / len(target_test_loader.dataset)))
 
-        best_acc = {'epoch': epoch + 1, 'source_acc': source_acc, 'target_acc': target_acc}
+        best_acc = {'epoch': epoch + 1, 'source_acc': round(source_acc, 2), 'target_acc': round(target_acc, 2)}
         result_list.append(best_acc)
 
     return result_list, target_acc

@@ -11,7 +11,7 @@ PyTorch implementation of DANN (Domain-Adversarial Training of Neural Networks)
 ### Prerequisites
 
 ```
-python 3.5
+python 3.6
 pytorch 0.4.1
 ```
 
