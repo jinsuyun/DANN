@@ -160,9 +160,13 @@ class MNISTM(data.Dataset):
         print('MNISTM Done!')
 
 
+# transform = transforms.Compose([transforms.ToTensor(),
+#                                 transforms.Normalize((0.29730626, 0.29918741, 0.27534935),
+#                                                      (0.32780124, 0.32292358, 0.32056796))
+#                                 ])
 transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize((0.29730626, 0.29918741, 0.27534935),
-                                                     (0.32780124, 0.32292358, 0.32056796))
+                                transforms.Normalize((0.4639, 0.4676, 0.4199),
+                                                     (0.4639, 0.4676, 0.4199))
                                 ])
 
 mnistm_train_dataset = MNISTM(root='data/pytorch/MNIST-M', train=True, download=True,

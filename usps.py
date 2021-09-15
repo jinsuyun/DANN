@@ -5,13 +5,21 @@ import torch
 import params
 
 
+# train_transform = transforms.Compose([transforms.ToTensor(),
+#                                 transforms.Normalize(mean=(0.2468769476570631,),
+#                                                      std=(0.29887581181519896,))
+#                                 ])
+# test_transform = transforms.Compose([transforms.ToTensor(),
+#                                 transforms.Normalize(mean=(0.2598811329464521,),
+#                                                      std=(0.30825718086426723,))
+#                                 ])
 train_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.2468769476570631,),
-                                                     std=(0.29887581181519896,))
+                                transforms.Normalize(mean=(0.2539,),
+                                                     std=(0.3842,))
                                 ])
 test_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.2598811329464521,),
-                                                     std=(0.30825718086426723,))
+                                transforms.Normalize(mean=(0.2539,),
+                                                     std=(0.3842,))
                                 ])
 
 

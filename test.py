@@ -38,7 +38,7 @@ def tester(source,target,encoder, classifier, discriminator, source_test_loader,
         if source == "mnist":
             source_image = torch.cat((source_image, source_image, source_image), 1)  # MNIST convert to 3 channel
         source_feature = encoder(source_image)
-        source_output = classifier(source_feature)
+        source_output,_ = classifier(source_feature)
         source_pred = source_output.data.max(1, keepdim=True)[1]
         source_correct += source_pred.eq(source_label.data.view_as(source_pred)).cpu().sum()
 
@@ -48,7 +48,7 @@ def tester(source,target,encoder, classifier, discriminator, source_test_loader,
         if target == "mnist":
             target_image =torch.cat((target_image,target_image,target_image),1)
         target_feature = encoder(target_image)
-        target_output = classifier(target_feature)
+        target_output,_ = classifier(target_feature)
         target_pred = target_output.data.max(1, keepdim=True)[1]
         target_correct += target_pred.eq(target_label.data.view_as(target_pred)).cpu().sum()
 
@@ -59,7 +59,7 @@ def tester(source,target,encoder, classifier, discriminator, source_test_loader,
             domain_target_labels = torch.ones(target_label.shape[0]).type(torch.LongTensor)
             domain_combined_label = torch.cat((domain_source_labels, domain_target_labels), 0).cuda()
             domain_feature = encoder(combined_image)
-            domain_output = discriminator(domain_feature, alpha)
+            domain_output,_ = discriminator(domain_feature, alpha)
             domain_pred = domain_output.data.max(1, keepdim=True)[1]
             domain_correct += domain_pred.eq(domain_combined_label.data.view_as(domain_pred)).cpu().sum()
 

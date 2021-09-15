@@ -4,26 +4,35 @@ from torchvision import transforms
 import torch
 import params
 
+# train_transform = transforms.Compose([transforms.ToTensor(),
+#                                       transforms.Normalize(mean=(0.45141874380092256,),
+#                                                            std=(0.19929124669110937,)),
+#                                       transforms.Resize((28, 28))
+#                                       ])
+# test_transform = transforms.Compose([transforms.ToTensor(),
+#                                      transforms.Normalize(mean=(0.4579653771401513, 0.5, 0.5),
+#                                                           std=(0.2250053592015834,)),
+#                                      transforms.Resize((28, 28))
+#                                      ])
 
 train_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.45141874380092256,),
-                                                     std=(0.19929124669110937,)),
-                                transforms.Resize((28,28))
-                                ])
+                                      transforms.Normalize(mean=(0.437,0.4437,0.4728),
+                                                           std=(0.1980,0.2010,0.1970)),
+                                      transforms.Resize((28, 28))
+                                      ])
 test_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.4579653771401513,),
-                                                     std=(0.2250053592015834,)),
-                                transforms.Resize((28,28))
-                                ])
+                                     transforms.Normalize(mean=(0.437, 0.4437, 0.4728),
+                                                          std=(0.1980,0.2010,0.1970)),
+                                     transforms.Resize((28, 28))
+                                     ])
 
 
 svhn_train_dataset = datasets.SVHN(root='data/pytorch/SVHN', split="train", download=True,
-                                     transform=train_transform)
+                                   transform=train_transform)
 svhn_valid_dataset = datasets.SVHN(root='data/pytorch/SVHN', split="train", download=True,
-                                     transform=transforms)
+                                   transform=transforms)
 svhn_test_dataset = datasets.SVHN(root='data/pytorch/SVHN', split="test", download=True,
-                                     transform=test_transform)
-
+                                  transform=test_transform)
 
 # print('==> SVHN Computing mean and std..')
 # mean_train = svhn_train_dataset.data.mean()
@@ -76,6 +85,7 @@ svhn_test_loader = DataLoader(
 
 
 
+
 def one_hot_embedding(labels, num_classes=10):
     """Embedding labels to one-hot form.
 
@@ -92,4 +102,3 @@ def one_hot_embedding(labels, num_classes=10):
 # print(one_hot_embedding(mnist_test_dataset.test_labels))
 
 # print(mnist_concat.shape)
-

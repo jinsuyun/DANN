@@ -5,6 +5,7 @@ import svhn
 import utils
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 import test
 import mnist
 import mnistm
@@ -109,7 +110,7 @@ def source_only(source, target, encoder, classifier, source_train_loader, target
 
 
 def dann(source, target, encoder, classifier, discriminator, source_train_loader, target_train_loader, sum_pooling_mode,
-         sumdiscriminator, save_dir, save_name):
+         sumdiscriminator, consistency, save_dir, save_name):
     print("DANN training")
     print(source, " ", len(source_train_loader.dataset))
     print(target, " ", len(target_train_loader.dataset))
@@ -136,8 +137,6 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             list(discriminator.parameters()),
             lr=0.01,
             momentum=0.9)
-
-
 
     best_acc = 0
     for epoch in range(params.epochs):
@@ -188,41 +187,37 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             # print(source_feature.shape) # s->m : torch.Size([32, 128, 3, 3])    m->mm : torch.Size([32, 48, 7, 7])
 
             # 1.Classification loss
-            class_pred = classifier(source_feature)  # torch.Size([32, 10])
+            class_pred, class_feature = classifier(source_feature)  # class_pred: torch.Size([32, 10])
             # print(class_pred.shape)
 
             class_loss = classifier_criterion(class_pred, source_label)
 
             # 2. Domain loss
-            domain_pred = discriminator(combined_feature, alpha)
-            # print(combined_feature.shape)
-            # print(class_pred.shape)
-            # print(domain_pred.shape)
-
-            # print(source_feature.shape)
-
+            domain_pred, domain_feature = discriminator(combined_feature, alpha)
+            sum_pooling_pred = 0
             if sum_pooling_mode == 1:  # height sum pooling
                 # print(feat.shape) #torch.Size([64, 48, 7, 7])
                 sum_combined_feature = torch.sum(combined_feature, dim=2).unsqueeze(dim=2)
                 # print(sum_combined_feature.shape) #torch.Size([64, 48, 1, 7])
-                sum_pooling_pred = sumdiscriminator(sum_combined_feature, alpha)
+                sum_pooling_pred, sum_feature = sumdiscriminator(sum_combined_feature, alpha)
 
             elif sum_pooling_mode == 2:  # width sum pooling
                 sum_combined_feature = torch.sum(combined_feature, dim=3).unsqueeze(dim=3)
                 # print(sum_combined_feature.shape) #torch.Size([64, 48, 7, 1])
-                sum_pooling_pred = sumdiscriminator(sum_combined_feature, alpha)
+                sum_pooling_pred, sum_feature = sumdiscriminator(sum_combined_feature, alpha)
 
             elif sum_pooling_mode == 3:  # both sum pooling
                 sum_combined_feature = torch.sum(combined_feature, dim=2).unsqueeze(dim=2)
                 # print(sum_combined_feature.shape) #torch.Size([64, 48, 1, 7])
-                sum_pooling_pred = sumdiscriminator(sum_combined_feature, alpha)
+                sum_pooling_pred, sum_feature = sumdiscriminator(sum_combined_feature, alpha)
 
                 sum_combined_feature2 = torch.sum(combined_feature, dim=3).unsqueeze(dim=3)
-                sum_pooling_pred2 = sumdiscriminator(sum_combined_feature2, alpha)
+                sum_pooling_pred2, sum_feature2 = sumdiscriminator(sum_combined_feature2, alpha)
 
             domain_source_labels = torch.zeros(source_label.shape[0]).type(torch.LongTensor)
             domain_target_labels = torch.ones(target_label.shape[0]).type(torch.LongTensor)
             domain_combined_label = torch.cat((domain_source_labels, domain_target_labels), 0).cuda()
+
             domain_loss = discriminator_criterion(domain_pred, domain_combined_label)
 
             if sum_pooling_mode == 1 or sum_pooling_mode == 2:
@@ -243,28 +238,103 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
                 total_loss += sum_loss
                 total_loss += sum_loss2
 
+            # consistency loss
+            if consistency:
+                class_consistency_prob = class_pred  # [:, 1]
+                class_consistency_prob = torch.mean(class_consistency_prob)
+                class_consistency_prob = class_consistency_prob.repeat(domain_feature.size())
+                class_DA_cst_loss = consistency_criterion(domain_feature, class_consistency_prob.detach())
+
+                # domain_consistency_prob = domain_pred  # [:, 0]
+                # domain_consistency_prob = torch.mean(domain_consistency_prob)
+                # domain_consistency_prob = domain_consistency_prob.repeat(class_feature.size())
+                # domain_DA_cst_loss = consistency_criterion(class_feature, domain_consistency_prob.detach())
+
+                consistency_loss = 0.1 * (class_DA_cst_loss)  # 0.1 = lambda
+                # consistency_loss = 0.1 * (domain_DA_cst_loss) # 0.1 = lambda
+                # consistency_loss = 0.1 * (class_DA_cst_loss + domain_DA_cst_loss)  # 0.1 = lambda
+                total_loss += consistency_loss
+
+                if sum_pooling_mode == 1:
+                    width_sumpooling_consistency_prob = sum_pooling_pred  # [:, 0]
+                    width_sumpooling_consistency_prob = torch.mean(width_sumpooling_consistency_prob)
+                    width_sumpooling_consistency_prob = width_sumpooling_consistency_prob.repeat(domain_feature.size())
+                    width_sumpooling_DA_cst_loss = consistency_criterion(domain_feature,
+                                                                         width_sumpooling_consistency_prob.detach())
+
+                    total_loss += 0.1 * width_sumpooling_DA_cst_loss
+
+                elif sum_pooling_mode == 2:
+                    height_sumpooling_consistency_prob = sum_pooling_pred  # [:, 0]
+                    height_sumpooling_consistency_prob = torch.mean(height_sumpooling_consistency_prob)
+                    height_sumpooling_consistency_prob = height_sumpooling_consistency_prob.repeat(
+                        domain_feature.size())
+                    height_sumpooling_DA_cst_loss = consistency_criterion(domain_feature,
+                                                                          height_sumpooling_consistency_prob.detach())
+
+                    total_loss += 0.1 * height_sumpooling_DA_cst_loss
+
+
+                elif sum_pooling_mode == 3:
+                    width_sumpooling_consistency_prob = sum_pooling_pred  # [:, 0]
+                    width_sumpooling_consistency_prob = torch.mean(width_sumpooling_consistency_prob)
+                    width_sumpooling_consistency_prob = width_sumpooling_consistency_prob.repeat(domain_feature.size())
+                    width_sumpooling_DA_cst_loss = consistency_criterion(domain_feature,
+                                                                         width_sumpooling_consistency_prob.detach())
+
+                    height_sumpooling_consistency_prob = sum_pooling_pred  # [:, 0]
+                    height_sumpooling_consistency_prob = torch.mean(height_sumpooling_consistency_prob)
+                    height_sumpooling_consistency_prob = height_sumpooling_consistency_prob.repeat(
+                        domain_feature.size())
+                    height_sumpooling_DA_cst_loss = consistency_criterion(domain_feature,
+                                                                          height_sumpooling_consistency_prob.detach())
+
+                    total_loss += 0.1 * height_sumpooling_DA_cst_loss
+                    total_loss += 0.1 * width_sumpooling_DA_cst_loss
+
             total_loss.backward()
             optimizer.step()
 
             if (batch_idx + 1) % 50 == 0:
                 if sum_pooling_mode == 1 or sum_pooling_mode == 2:
-                    print(
-                        '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}'.format(
-                            batch_idx * len(target_image), len(target_train_loader.dataset),
-                            100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
-                            domain_loss.item(), sum_loss.item()))
+                    if consistency:
+                        print(
+                            '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}\tConsistency Loss: {:.6f}'.format(
+                                batch_idx * len(target_image), len(target_train_loader.dataset),
+                                100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                                domain_loss.item(), sum_loss.item(), (consistency_loss.item())))
+                    else:
+                        print(
+                            '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}'.format(
+                                batch_idx * len(target_image), len(target_train_loader.dataset),
+                                100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                                domain_loss.item(), sum_loss.item()))
                 elif sum_pooling_mode == 3:
-                    print(
-                        '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}'.format(
-                            batch_idx * len(target_image), len(target_train_loader.dataset),
-                            100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
-                            domain_loss, sum_loss.item()))
+                    if consistency:
+                        print(
+                            '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}\tConsistency Loss: {:.6f}'.format(
+                                batch_idx * len(target_image), len(target_train_loader.dataset),
+                                100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                                domain_loss.item(), sum_loss.item(), (domain_DA_cst_loss.item())))
+                    else:
+                        print(
+                            '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tSum Loss: {:.6f}'.format(
+                                batch_idx * len(target_image), len(target_train_loader.dataset),
+                                100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                                domain_loss, sum_loss.item()))
 
                 else:
-                    print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}'.format(
-                        batch_idx * len(target_image), len(target_train_loader.dataset),
-                        100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
-                        domain_loss.item()))
+                    if consistency:
+                        print(
+                            '[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}\tConsistency Loss: {:.6f}'.format(
+                                batch_idx * len(target_image), len(target_train_loader.dataset),
+                                100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                                domain_loss.item(), (consistency_loss.item())))
+                    else:
+                        print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\tClass Loss: {:.6f}\tDomain Loss: {:.6f}'.format(
+                            batch_idx * len(target_image), len(target_train_loader.dataset),
+                            100. * batch_idx / len(target_train_loader), total_loss.item(), class_loss.item(),
+                            domain_loss.item()))
 
         # if epoch == 0:
         #     visualize(epoch, encoder, 'source', save_name)
