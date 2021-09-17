@@ -108,6 +108,7 @@ class Extractor(nn.Module):
     def __init__(self, *args, **kwargs):
         # print(args)
         # print(kwargs['source'])
+
         self.source = kwargs['source']
         self.target = kwargs['target']
         super(Extractor, self).__init__()
@@ -119,7 +120,7 @@ class Extractor(nn.Module):
             nn.Conv2d(in_channels=32, out_channels=48, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(in_channels=48,out_channels=1,kernel_size=5)
+            # nn.Conv2d(in_channels=48,out_channels=1,kernel_size=5)
         )
         self.usps_extractor = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, padding=2),
@@ -134,11 +135,13 @@ class Extractor(nn.Module):
         # self.svhn_extractor1 = self.make_sequential(3, 64, 3, kernel_size=5, padding=2)
         # self.svhn_extractor2 = self.make_sequential(64, 64, 3, kernel_size=5, padding=2)
         # self.svhn_extractor3 = self.make_sequential2(64, 128, kernel_size=5, padding=2)
-        self.svhn_extractor1 = self.make_sequential(3, 64,3, kernel_size=5, padding=2)
+        self.svhn_extractor1 = self.make_sequential(3, 64, 3, kernel_size=5, padding=2)
         self.svhn_extractor2 = self.make_sequential2(64, 128, kernel_size=5, padding=2)
-        self.svhn_extractor3 = self.make_sequential(128, 256,3, kernel_size=5, padding=2)
+        self.svhn_extractor3 = self.make_sequential(128, 256, 3, kernel_size=5, padding=2)
         self.svhn_extractor4 = self.make_sequential2(256, 256, kernel_size=5, padding=2)
-        self.svhn_extractor5 = self.make_sequential(256, 512,3, kernel_size=5, padding=2)
+        self.svhn_extractor5 = self.make_sequential(256, 512, 3, kernel_size=5, padding=2)
+
+        self.conv1x1 = nn.Conv2d(48, 1, kernel_size=1)
 
     def make_sequential(self, in_channels, out_channels, max_kerel_size, *args, **kwargs):
         return nn.Sequential(
@@ -153,7 +156,7 @@ class Extractor(nn.Module):
             nn.ReLU()
         )
 
-    def forward(self, x):
+    def forward(self, x, cst=False):
         # print(x.shape)
         # exit()
         if self.source == "mnist" or self.target == "mnistm":
@@ -164,8 +167,13 @@ class Extractor(nn.Module):
             x = self.svhn_extractor3(x)
             x = self.svhn_extractor4(x)
             x = self.svhn_extractor5(x)
+
         elif self.source == "usps" and self.target == "mnist":
             x = self.usps_extractor(x)
+
+        if cst:
+            x = self.conv1x1(x)
+            return x
 
         # 32 * 48 * 7 * 7
         # print(source)
@@ -209,7 +217,7 @@ class Classifier(nn.Module):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
             nn.ReLU()
-            )
+        )
 
     def make_sequential2(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
@@ -231,7 +239,7 @@ class Classifier(nn.Module):
         if pseudo:
             return x
 
-        return F.softmax(x,dim=1),x
+        return F.softmax(x, dim=1), x
 
 
 class Discriminator(nn.Module):
@@ -261,7 +269,7 @@ class Discriminator(nn.Module):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
             nn.ReLU()
-            )
+        )
 
     def make_sequential2(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
@@ -278,7 +286,7 @@ class Discriminator(nn.Module):
             x = self.svhn_discriminator2(x)
             x = self.svhn_discriminator3(x)
 
-        return F.softmax(x,dim=1),x
+        return F.softmax(x, dim=1), x
 
 
 class SumDiscriminator(nn.Module):
@@ -287,8 +295,8 @@ class SumDiscriminator(nn.Module):
         self.source = kwargs['source']
         self.target = kwargs['target']
         self.discriminator = nn.Sequential(
-            nn.Linear(in_features=3 * 4 * 28, out_features=100),
-            # nn.Linear(in_features=3 * 28, out_features=100),
+            # nn.Linear(in_features=3 * 4 * 28, out_features=100),
+            nn.Linear(in_features=3 * 28 * 28, out_features=100),
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2)
         )
@@ -308,7 +316,7 @@ class SumDiscriminator(nn.Module):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
             nn.ReLU()
-            )
+        )
 
     def make_sequential2(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
@@ -331,7 +339,7 @@ class SumDiscriminator(nn.Module):
         # else:
         # x = self.discriminator(reversed_input)
 
-        return F.softmax(x,dim=1),x
+        return F.softmax(x, dim=1), x
 
 # class Discriminator_Conv2d(nn.Module):
 #     def __init__(self):
