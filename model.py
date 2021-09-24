@@ -295,8 +295,8 @@ class SumDiscriminator(nn.Module):
         self.source = kwargs['source']
         self.target = kwargs['target']
         self.discriminator = nn.Sequential(
-            # nn.Linear(in_features=3 * 4 * 28, out_features=100),
-            nn.Linear(in_features=3 * 28 * 28, out_features=100),
+            nn.Linear(in_features=3 * 4 * 28, out_features=100),
+            # nn.Linear(in_features=3 * 28 * 28, out_features=100),
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2)
         )
