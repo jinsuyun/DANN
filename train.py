@@ -111,14 +111,15 @@ def source_only(source, target, encoder, classifier, source_train_loader, target
 
 
 def dann(source, target, encoder, classifier, discriminator, source_train_loader, target_train_loader, sum_pooling_mode,
-         sumdiscriminator, consistency, save_dir, save_name):
+         sumdiscriminator, consistency, save_dir, save_name,vis):
     print("DANN training")
     print(source, " ", len(source_train_loader.dataset))
     print(target, " ", len(target_train_loader.dataset))
     # print(len(source_train_loader.dataset))
     # print(len(target_train_loader.dataset))
     # exit()
-    visualize(source, target, -1, encoder, 'source', save_name)
+    if vis:
+        visualize(source, target, -1, encoder, 'source', save_name)
     classifier_criterion = nn.CrossEntropyLoss().cuda()
     discriminator_criterion = nn.CrossEntropyLoss().cuda()
     sum_discriminator_criterion = nn.CrossEntropyLoss().cuda()
@@ -359,7 +360,8 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             if current_acc > best_acc:
                 best_acc = current_acc
                 save_model(epoch, encoder, classifier, discriminator, 'dann', save_dir)
-            visualize(source, target, epoch, encoder, 'source', save_name)
+            if vis:
+                visualize(source, target, epoch, encoder, 'source', save_name)
 
     print(max(result_list, key=lambda x: x['target_acc']))
     best_dir = 'best_result/'

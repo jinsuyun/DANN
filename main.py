@@ -72,6 +72,13 @@ def parse_args():
         action="store_true"
     )
 
+    parser.add_argument(
+        "--visualize",
+        dest="vis",
+        help="whether use tsne visualization",
+        action="store_true"
+    )
+
     args = parser.parse_args()
     return args
 
@@ -144,7 +151,7 @@ def main():
 
         train.dann(args.source, args.target, encoder, classifier, discriminator, source_train_loader,
                    target_train_loader,
-                   sum_pooling_mode, sumdiscriminator, args.cst, model_dir, args.save)
+                   sum_pooling_mode, sumdiscriminator, args.cst, model_dir, args.save,args.vis)
 
         # only_sumpooling_train.dann(encoder, classifier, source_train_loader, target_train_loader,
         #            sum_pooling_mode, sumdiscriminator, model_dir, args.save)
