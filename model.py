@@ -131,28 +131,14 @@ class Extractor(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2)
         )
-        self.svhn_extractor =nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=(5, 5),padding=2),  # 28
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2)),  # 13
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(5, 5),padding=2),  # 9
-            nn.BatchNorm2d(64),
-            nn.Dropout2d(),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2)),  # 4
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4))
-        )
+
         # dann model for svhn dataset
+
         self.svhn_extractor1 = self.make_sequential(3, 64, 3, kernel_size=5, padding=2)
-        self.svhn_extractor2 = self.make_sequential(64, 64, 3, kernel_size=5, padding=2)
-        self.svhn_extractor3 = self.make_sequential2(64, 128, kernel_size=5, padding=2)
-        # self.svhn_extractor1 = self.make_sequential(3, 64, 3, kernel_size=5, padding=2)
-        # self.svhn_extractor2 = self.make_sequential2(64, 128, kernel_size=5, padding=2)
-        # self.svhn_extractor3 = self.make_sequential(128, 256, 3, kernel_size=5, padding=2)
-        # self.svhn_extractor4 = self.make_sequential2(256, 256, kernel_size=5, padding=2)
-        # self.svhn_extractor5 = self.make_sequential(256, 512, 3, kernel_size=5, padding=2)
+        self.svhn_extractor2 = self.make_sequential2(64, 128, kernel_size=5, padding=2)
+        self.svhn_extractor3 = self.make_sequential(128, 256, 3, kernel_size=5, padding=2)
+        self.svhn_extractor4 = self.make_sequential2(256, 256, kernel_size=5, padding=2)
+        self.svhn_extractor5 = self.make_sequential(256, 512, 3, kernel_size=5, padding=2)
 
         self.conv1x1 = nn.Conv2d(48, 1, kernel_size=1)
 
@@ -161,12 +147,12 @@ class Extractor(nn.Module):
             nn.Conv2d(in_channels, out_channels, *args, **kwargs),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(),
-            nn.MaxPool2d(max_kerel_size,stride=2))
+            nn.MaxPool2d(max_kerel_size))
 
     def make_sequential2(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, **kwargs),
-            # nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU()
         )
 
@@ -176,12 +162,11 @@ class Extractor(nn.Module):
         if self.source == "mnist" or self.target == "mnistm":
             x = self.extractor(x)
         elif self.source == "svhn" and self.target == "mnist":
-            # x = self.svhn_extractor1(x)
-            # x = self.svhn_extractor2(x)
-            # x = self.svhn_extractor3(x)
-            # x = self.svhn_extractor4(x)
-            # x = self.svhn_extractor5(x)
-            x = self.svhn_extractor(x)
+            x = self.svhn_extractor1(x)
+            x = self.svhn_extractor2(x)
+            x = self.svhn_extractor3(x)
+            x = self.svhn_extractor4(x)
+            x = self.svhn_extractor5(x)
 
         elif self.source == "usps" and self.target == "mnist":
             x = self.usps_extractor(x)
@@ -220,26 +205,16 @@ class Classifier(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=10),
         )
-        self.svhn_clasifier = nn.Sequential(
-            nn.Linear(128 * 1 * 1, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Linear(256, 10))
 
-        # self.svhn_classifier = self.make_sequential(128*3*3,3072)
-        # self.svhn_classifier2 = self.make_sequential(3072,2048)
-        # self.svhn_classifier3 = self.make_sequential2(2048,10)
-        # self.svhn_classifier = self.make_sequential(512, 256)
-        # self.svhn_classifier2 = self.make_sequential(256, 128)
-        # self.svhn_classifier3 = self.make_sequential2(128, 10)
+        self.svhn_classifier1 = self.make_sequential(512, 256)
+        self.svhn_classifier2 = self.make_sequential(256, 128)
+        self.svhn_classifier3 = self.make_sequential2(128, 10)
 
 
     def make_sequential(self, in_channels, out_channels, *args, **kwargs):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
+            nn.BatchNorm1d(out_channels),
             nn.ReLU()
         )
 
@@ -251,15 +226,16 @@ class Classifier(nn.Module):
 
     def forward(self, x, pseudo=None):
         x = x.view(x.size(0), -1)  # Flatten
-        # print(x.shape) #s->m : torch.Size([32, 1152])   m->mm : torch.Size([32, 2352])
 
         if self.source == "mnist" or self.target == "mnistm":
+            # x = x.view(x.size(0), -1)  # Flatten
+            # print(x.shape) #s->m : torch.Size([32, 1152])   m->mm : torch.Size([32, 2352])
             x = self.classifier(x)
         elif self.source == "svhn" and self.target == "mnist":
-            # x = self.svhn_classifier(x)
-            # x = self.svhn_classifier2(x)
-            # x = self.svhn_classifier3(x)
-            x = self.svhn_clasifier(x)
+            x = self.svhn_classifier1(x)
+            x = self.svhn_classifier2(x)
+            x = self.svhn_classifier3(x)
+
         if pseudo:
             return x
 
@@ -281,25 +257,15 @@ class Discriminator(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2),
         )
-        # self.svhn_discriminator = self.make_sequential(128*3*3,1024)
-        # self.svhn_discriminator2 = self.make_sequential(1024,1024)
-        # self.svhn_discriminator3 = self.make_sequential2(1024,2)
-        self.svhn_discriminator = nn.Sequential(
-            nn.Linear(128 * 1 * 1, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Linear(256, 2))
 
-        # self.svhn_discriminator = self.make_sequential(512, 256)
-        # self.svhn_discriminator2 = self.make_sequential(256, 128)
-        # self.svhn_discriminator3 = self.make_sequential2(128, 2)
+        self.svhn_discriminator1 = self.make_sequential(512, 256)
+        self.svhn_discriminator2 = self.make_sequential(256, 128)
+        self.svhn_discriminator3 = self.make_sequential2(128, 2)
 
     def make_sequential(self, in_channels, out_channels, *args, **kwargs):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
+            nn.BatchNorm1d(out_channels),
             nn.ReLU()
         )
 
@@ -309,15 +275,20 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, input_feature, alpha):
-        input_feature = input_feature.view(input_feature.size(0), -1)  # Flatten
-        reversed_input = ReverseLayerF.apply(input_feature, alpha)  # torch.Size([64, 2352])
+
         if self.source == "mnist" or self.target == "mnistm":
+            input_feature = input_feature.view(input_feature.size(0), -1)  # Flatten
+            reversed_input = ReverseLayerF.apply(input_feature, alpha)  # torch.Size([64, 2352])
             x = self.discriminator(reversed_input)
         elif self.source == "svhn" and self.target == "mnist":
-            # x = self.svhn_discriminator(reversed_input)
-            # x = self.svhn_discriminator2(x)
-            # x = self.svhn_discriminator3(x)
-            x = self.svhn_discriminator(reversed_input)
+
+            # input_feature = input_feature.view(-1,128*1*1)  # Flatten
+            input_feature = input_feature.view(input_feature.size(0), -1)  # Flatten
+            reversed_input = ReverseLayerF.apply(input_feature, alpha)  # torch.Size([64, 2352])
+            x = self.svhn_discriminator1(reversed_input)
+            x = self.svhn_discriminator2(x)
+            x = self.svhn_discriminator3(x)
+
         return F.softmax(x, dim=1), x
 
 
@@ -327,8 +298,8 @@ class SumDiscriminator(nn.Module):
         self.source = kwargs['source']
         self.target = kwargs['target']
         self.discriminator = nn.Sequential(
-            nn.Linear(in_features=3 * 4 * 28, out_features=100),
-            # nn.Linear(in_features=3 * 28 * 28, out_features=100),
+            # nn.Linear(in_features=3 * 4 * 28, out_features=100),
+            nn.Linear(in_features=3 * 28 * 28, out_features=100),
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2)
         )
@@ -339,23 +310,16 @@ class SumDiscriminator(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2)
         )
-        self.svhn_discriminator = nn.Sequential(
-            nn.Linear(128 * 1 * 1, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Linear(256, 2),
-        )
-        # self.svhn_discriminator = self.make_sequential(128 * 3 * 3, 1024)
-        # self.svhn_discriminator2 = self.make_sequential(1024, 1024)
-        # self.svhn_discriminator3 = self.make_sequential2(1024, 2)
+
+
+        self.svhn_discriminator1 = self.make_sequential(512, 256)
+        self.svhn_discriminator2 = self.make_sequential(256, 128)
+        self.svhn_discriminator3 = self.make_sequential2(128, 2)
 
     def make_sequential(self, in_channels, out_channels, *args, **kwargs):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels, *args, **kwargs),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm1d(out_channels),
             nn.ReLU()
         )
 
@@ -371,14 +335,9 @@ class SumDiscriminator(nn.Module):
         if self.source == "mnist" or self.target == "mnistm":
             x = self.discriminator(reversed_input)
         elif self.source == "svhn" and self.target == "mnist":
-            # x = self.svhn_discriminator(reversed_input)
-            # x = self.svhn_discriminator2(x)
-            # x = self.svhn_discriminator3(x)
-            x = self.make_sequential_svhn(reversed_input)
-        # if data == "usps" or data == "mnist":
-        #     x = self.usps_discriminator(reversed_input)
-        # else:
-        # x = self.discriminator(reversed_input)
+            x = self.svhn_discriminator1(reversed_input)
+            x = self.svhn_discriminator2(x)
+            x = self.svhn_discriminator3(x)
 
         return F.softmax(x, dim=1), x
 

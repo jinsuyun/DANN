@@ -4,6 +4,8 @@ from torchvision import transforms
 import torch
 import params
 
+
+
 # train_transform = transforms.Compose([transforms.ToTensor(),
 #                                       transforms.Normalize(mean=(0.45141874380092256,),
 #                                                            std=(0.19929124669110937,)),
@@ -18,13 +20,24 @@ import params
 train_transform = transforms.Compose([transforms.ToTensor(),
                                       transforms.Normalize(mean=(0.437,0.4437,0.4728),
                                                            std=(0.1980,0.2010,0.1970)),
-                                      transforms.Resize((28, 28))
+                                      # transforms.Resize((28, 28))
                                       ])
 test_transform = transforms.Compose([transforms.ToTensor(),
                                      transforms.Normalize(mean=(0.437, 0.4437, 0.4728),
                                                           std=(0.1980,0.2010,0.1970)),
-                                     transforms.Resize((28, 28))
+                                     # transforms.Resize((28, 28))
                                      ])
+
+# train_transform = transforms.Compose([transforms.ToTensor(),
+#                                       transforms.Normalize(mean=(0.5,0.5,0.5),
+#                                                            std=(0.5,0.5,0.5)),
+#                                       # transforms.Resize((28, 28))
+#                                       ])
+# test_transform = transforms.Compose([transforms.ToTensor(),
+#                                      transforms.Normalize(mean=(0.5, 0.5, 0.5),
+#                                                           std=(0.5,0.5,0.5)),
+#                                      # transforms.Resize((28, 28))
+#                                      ])
 
 
 svhn_train_dataset = datasets.SVHN(root='data/pytorch/SVHN', split="train", download=True,
