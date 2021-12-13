@@ -10,25 +10,27 @@ import params
 #                                 transforms.Normalize(mean=(0.29730626,),
 #                                                      std=(0.32780124,)),
 #                                 ])
-# train_transform = transforms.Compose([transforms.ToTensor(),
-#                                       transforms.Normalize(mean=(0.1307,),
-#                                                            std=(0.3081)),
-#                                       ])
-# test_transform = transforms.Compose([transforms.ToTensor(),
-#                                      transforms.Normalize(mean=(0.1325),
-#                                                           std=(0.3105)),
-#                                      ])
-
+#mnist -> mnist-m transform
 train_transform = transforms.Compose([transforms.ToTensor(),
                                       transforms.Normalize(mean=(0.1307,),
                                                            std=(0.3081)),
-                                      transforms.Resize((32, 32))
                                       ])
 test_transform = transforms.Compose([transforms.ToTensor(),
                                      transforms.Normalize(mean=(0.1325),
                                                           std=(0.3105)),
-                                     transforms.Resize((32, 32))
                                      ])
+
+#svhn -> mnist transform
+# train_transform = transforms.Compose([transforms.ToTensor(),
+#                                       transforms.Normalize(mean=(0.1307,),
+#                                                            std=(0.3081)),
+#                                       transforms.Resize((32, 32))
+#                                       ])
+# test_transform = transforms.Compose([transforms.ToTensor(),
+#                                      transforms.Normalize(mean=(0.1325),
+#                                                           std=(0.3105)),
+#                                      transforms.Resize((32, 32))
+#                                      ])
 
 # train_transform = transforms.Compose([transforms.ToTensor(),
 #                                       transforms.Normalize(mean=(0.5,),

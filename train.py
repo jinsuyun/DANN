@@ -163,11 +163,13 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
             p = float(batch_idx + start_steps) / total_steps
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
 
+
             if source == "mnist":
                 source_image = torch.cat((source_image, source_image, source_image), 1)
 
             if target == "mnist":
-                target_image = torch.cat((target_image, target_image, target_image), 1)
+                if source != "usps":
+                    target_image = torch.cat((target_image, target_image, target_image), 1)
 
             # print(source_image.shape)  # torch.Size([32, 1, 28, 28])
             # print(target_image.shape)  # torch.Size([32, 1, 28, 28])
@@ -231,9 +233,7 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
                 sum_pooling = torch.matmul(sum_combined_feature2, sum_combined_feature)
 
                 sum_pooling_pred, sum_feature = sumdiscriminator(sum_pooling, alpha)
-                # sum_pooling_pred2, sum_feature2 = sumdiscriminator(sum_combined_feature2, alpha)
                 sum_loss = sum_discriminator_criterion(sum_pooling_pred, domain_combined_label)
-                # sum_loss2 = sum_discriminator_criterion(sum_pooling_pred2, domain_combined_label)
 
             domain_loss = discriminator_criterion(domain_pred, domain_combined_label)
 
@@ -241,10 +241,12 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
 
             if sum_pooling_mode == 1 or sum_pooling_mode == 2:  # 1 = height 2 = width 3 = both
                 # print("sum mode2", sum_pooling_mode)
-                total_loss += (sum_loss*alpha)
+                # total_loss += (sum_loss*alpha)
+                total_loss += (sum_loss)
             elif sum_pooling_mode == 3:
                 # print("both sum mode", sum_pooling_mode)
-                total_loss += (sum_loss*alpha)
+                total_loss += (sum_loss)
+                # total_loss += (sum_loss * alpha)
                 # print(sum_loss,"\n",sum_loss2)
 
             # consistency loss
@@ -256,6 +258,7 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
                     cst_loss = consistency_criterion(sum_combined_feature, consistency_prob.detach())
 
                     consistency_loss = 0.1 * alpha * (cst_loss)
+
                     total_loss += consistency_loss
 
                 elif sum_pooling_mode == 3:
@@ -265,6 +268,7 @@ def dann(source, target, encoder, classifier, discriminator, source_train_loader
                     cst_loss = consistency_criterion(sum_pooling, consistency_prob.detach())
 
                     consistency_loss = 0.1 *alpha* (cst_loss)  # 0.1 = lambda
+
                     total_loss += consistency_loss
 
                 else:

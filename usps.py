@@ -4,7 +4,6 @@ from torchvision import transforms
 import torch
 import params
 
-
 # train_transform = transforms.Compose([transforms.ToTensor(),
 #                                 transforms.Normalize(mean=(0.2468769476570631,),
 #                                                      std=(0.29887581181519896,))
@@ -14,22 +13,22 @@ import params
 #                                                      std=(0.30825718086426723,))
 #                                 ])
 train_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.2539,),
-                                                     std=(0.3842,))
-                                ])
+                                      transforms.Normalize(mean=(0.2539,),
+                                                           std=(0.3842,)),
+                                      transforms.Resize((28, 28))
+                                      ])
 test_transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize(mean=(0.2539,),
-                                                     std=(0.3842,))
-                                ])
-
+                                     transforms.Normalize(mean=(0.2539,),
+                                                          std=(0.3842,)),
+                                     transforms.Resize((28, 28))
+                                     ])
 
 usps_train_dataset = datasets.USPS(root='data/pytorch/USPS', train=True, download=True,
-                                     transform=train_transform)
+                                   transform=train_transform)
 usps_valid_dataset = datasets.USPS(root='data/pytorch/USPS', train=True, download=True,
-                                     transform=transforms)
+                                   transform=transforms)
 usps_test_dataset = datasets.USPS(root='data/pytorch/USPS', train=False, download=True,
-                                     transform=test_transform)
-
+                                  transform=test_transform)
 
 # print('==> Computing mean and std..')
 # mean_train = usps_train_dataset.data.mean(axis=(0,1,2))
@@ -81,7 +80,6 @@ usps_test_loader = DataLoader(
 )
 
 
-
 def one_hot_embedding(labels, num_classes=10):
     """Embedding labels to one-hot form.
 
@@ -98,4 +96,3 @@ def one_hot_embedding(labels, num_classes=10):
 # print(one_hot_embedding(mnist_test_dataset.test_labels))
 
 # print(mnist_concat.shape)
-

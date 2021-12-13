@@ -46,7 +46,8 @@ def tester(source,target,encoder, classifier, discriminator, source_test_loader,
         target_image, target_label = target_data
         target_image, target_label = target_image.cuda(), target_label.cuda()
         if target == "mnist":
-            target_image =torch.cat((target_image,target_image,target_image),1)
+            if source != "usps":
+                target_image =torch.cat((target_image,target_image,target_image),1)
         target_feature = encoder(target_image)
         target_output,_ = classifier(target_feature)
         target_pred = target_output.data.max(1, keepdim=True)[1]
