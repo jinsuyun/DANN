@@ -2,15 +2,9 @@ import os
 
 import torch
 
-import params
 import train
-import mnist
-import mnistm
-import usps
-import svhn
+from datasets import mnist, mnistm, svhn, usps
 import model
-import pseudo_train
-import only_sumpooling_train
 from utils import get_free_gpu
 import argparse
 

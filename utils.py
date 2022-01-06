@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 from torch.autograd import Function
 from sklearn.manifold import TSNE
 import torch
-import mnist
-import mnistm
+from datasets import mnist, mnistm, svhn
 import itertools
 import os
-import svhn
+
 
 class ReverseLayerF(Function):
 

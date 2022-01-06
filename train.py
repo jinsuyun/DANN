@@ -1,22 +1,16 @@
 import torch
 import numpy as np
 
-import model
-import svhn
 import utils
 import torch.optim as optim
 import torch.nn as nn
-import torch.nn.functional as F
 import test
-import mnist
-import mnistm
+from datasets import mnist, mnistm, svhn, usps
 from utils import save_model
 from utils import visualize
 from utils import set_model_mode
 import params
 import os
-import usps
-import argparse
 
 # Source : 0, Target :1
 

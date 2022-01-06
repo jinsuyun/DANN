@@ -4,8 +4,7 @@ import utils
 import torch.optim as optim
 import torch.nn as nn
 import only_sumpooling_test
-import mnist
-import mnistm
+from datasets import mnist, mnistm
 from utils import save_model
 from utils import visualize
 from utils import set_model_mode
